@@ -1,37 +1,86 @@
 package com.example.TelegramBot_Application_Demo.telegramBot;
 
+import com.example.TelegramBot_Application_Demo.dto.request.BotRequest;
+import com.example.TelegramBot_Application_Demo.service.BotService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-public class UpdateTelegramBot {
+import java.time.LocalDateTime;
 
-    public void onUpdateReceived(Update update){
+@Component
+public class UpdateTelegramBot extends TelegramLongPollingBot {
 
-        // 1. ពិនិត្យមើលឱ្យតែមានសារ (Message) ផ្ញើចូលមក (មិនថារូបភាព ឯកសារ ឬអក្សរ)
+    private final BotService botService;
+    private final String botUsername;
 
-        // 2. ទាញយក Chat ID ពីក្នុង Message
+    // Inject Bot Token, Bot Username តាមរយៈ Constructor ពី application.properties
+    public UpdateTelegramBot(BotService botService,
+                             @Value("${bot.token}") String botToken,
+                             @Value("${bot.name}") String botUsername)
+    {
+        super(botToken);
+        this.botService = botService;
+        this.botUsername = botUsername;
+    }
 
-        // 3. ហៅប្រើ BotService ដើម្បីរក្សាទុកឈ្មោះពេញ (FullName) និងព័ត៌មានរបស់ User ទៅក្នុង PostgreSQL ភ្លាមៗ
+    @Override
+    public String getBotUsername() {
+        return botUsername;
+    }
 
-        // 4. បង្កើត Object សម្រាប់ផ្ញើសារឆ្លើយតប (SendMessage) រួច Set Chat ID ទៅកាន់អ្នកផ្ញើ
+    @Override
+    public void onUpdateReceived(Update update) {
 
-        // 5. ពិនិត្យមើលប្រភេទសារ (Message Types) ដើម្បីកំណត់អត្ថបទឆ្លើយតប៖
+        if (update.hasMessage()) {
 
-        // 5.1 ករណីសារជាអក្សរ (Text Message)
-        // - ពិនិត្យមើលបើជាពាក្យ "/start" ឱ្យឆ្លើយតបសារស្វាគមន៍
-        // - បើជាអក្សរផ្សេងៗ ឱ្យឆ្លើយតបសារប្រាប់វិញធម្មតា
+            Long chatId = update.getMessage().getChatId();
 
-        // 5.2 ករណីសារជារូបភាព (Photo)
-        // - កំណត់អត្ថបទឆ្លើយតបប្រាប់ User ថាបច្ចុប្បន្ន Bot មិនទាន់អាចមើលរូបភាពដឹងឡើយ
+            // 1. រៀបចំទិន្នន័យ Full Name
+            String firstName = update.getMessage().getFrom().getFirstName();
+            String lastName = update.getMessage().getFrom().getLastName();
+            String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
 
-        // 5.3 ករណីសារជា Sticker
-        // - កំណត់អត្ថបទឆ្លើយតបបែបសប្បាយៗទៅកាន់ User (ឧទាហរណ៍៖ សរសើរ Sticker គាត់)
+            // 2. រក្សាទុកទិន្នន័យចូល Database តាមរយៈ BotService
+            BotRequest request = new BotRequest();
+            request.setFullName(fullName);
+            request.setDateTime(LocalDateTime.now());
 
-        // 5.4 ករណីសារប្រភេទផ្សេងទៀត (ដូចជា ឯកសារ, Audio, ទីតាំង Location)
-        // - កំណត់អត្ថបទឆ្លើយតបប្រាប់ User ថាទទួលបានសញ្ញាហើយ ប៉ុន្តែមិនទាន់គាំទ្រប្រភេទសារនេះទេ
+            botService.create(request);
 
-        // 6. ប្រើប្រាស់បញ្ជា execute(message) ដើម្បីផ្ញើសារដែលបានកំណត់ទាំងអស់ត្រឡប់ទៅ Telegram វិញ
+            // 3. បង្កើត Object SendMessage ដើម្បីឆ្លើយតបទៅកាន់ User វិញ
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId.toString());
 
-        // 7. ប្រើប្រាស់ block try-catch ដើម្បីចាប់យក Error (TelegramApiException) ករណីផ្ញើសារទៅវិញមិនជោគជ័យ
+            // 4. Check ប្រភេទសារដែល User ផ្ញើមក
+            if (update.getMessage().hasText()) {
+                String text = update.getMessage().getText();
 
+                if (text.equals("/start")) {
+                    message.setText("សួស្តី " + fullName + "! ព័ត៌មានរបស់អ្នកត្រូវបានរក្សាទុកក្នុង Database រួចរាល់ហើយ។");
+                } else {
+                    message.setText("អ្នកបាននិយាយថា: " + text);
+                }
+            }
+            else if (update.getMessage().hasPhoto()) {
+                message.setText("អ្នកបានផ្ញើរូបភាពមក! ប៉ុន្តែបច្ចុប្បន្នខ្ញុំអត់ទាន់អាចមើលរូបភាពដឹងឡើយ។");
+            }
+            else if (update.getMessage().hasSticker()) {
+                message.setText("Sticker របស់អ្នកស្អាត និងគួរឱ្យស្រឡាញ់ណាស់! 🥰");
+            }
+            else {
+                message.setText("ខ្ញុំទទួលបានសញ្ញារបស់អ្នកហើយ ប៉ុន្តែខ្ញុំមិនទាន់គាំទ្រប្រភេទសារនេះទេបាទ។");
+            }
+
+            // 5. ផ្ញើសារត្រឡប់ទៅ Telegram វិញ
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

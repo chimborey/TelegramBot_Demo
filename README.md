@@ -11,7 +11,7 @@
 * 📜 **API Documentation**: មានរៀបចំ **Swagger Open API** រួចជាស្រេចសម្រាប់ឱ្យ Admin ចូលពិនិត្យមើលលម្អិតពី API។
 
 ---
-
+    
 ## 🛠️ 1. How to Create Telegram Bot (របៀបបង្កើត Bot ក្នុង Telegram)
 
 ដើម្បីចាប់ផ្ដើមបង្កើត និងយកលេខ Token សម្រាប់ដំណើរការ Bot សូមអនុវត្តតាមជំហាននៅក្នុងកម្មវិធី Telegram ដូចខាងក្រោម៖

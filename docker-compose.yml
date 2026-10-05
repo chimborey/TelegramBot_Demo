@@ -17,7 +17,7 @@ services:
   # --- ២. កំណត់រចនាសម្ព័ន្ធសម្រាប់ Spring Boot Application ---
   spring-app:
     build: .
-    container_name: TelegramBot_Application_Demo
+    container_name: TelegramBot_Demo
     ports:
       - "8090:8090"
     depends_on:
