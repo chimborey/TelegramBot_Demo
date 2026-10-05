@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # --- ១. កំណត់រចនាសម្ព័ន្ធសម្រាប់ Database PostgreSQL ---
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres_container
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: TelegramBot_Demo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${SPRING_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # --- ២. កំណត់រចនាសម្ព័ន្ធសម្រាប់ Spring Boot Application ---
+  spring-app:
+    build: .
+    container_name: TelegramBot_Application_Demo
+    ports:
+      - "8090:8090"
+    depends_on:
+      - postgres-db # ឱ្យ PostgreSQL រត់ឡើងមុន ទើប Spring Boot រត់តាមក្រោយ
+    environment:
+      # 💡 កែតម្រូវ៖ ប្តូរឈ្មោះ DB ខាងចុងទៅជា TelegramBot_Demo ឱ្យត្រូវគ្នាជាមួយខាងលើ
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/TelegramBot_Demo
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_FLYWAY_ENABLED: "true" # ដាក់សញ្ញាសម្រង់ "" ដើម្បីធានាថា Docker អានជា String
+      BOT_NAME: my_smart_java_2026_bot
+      BOT_TOKEN: ${SPING_TELEGRAM_TOKEN}
+volumes:
+  postgres_data:
